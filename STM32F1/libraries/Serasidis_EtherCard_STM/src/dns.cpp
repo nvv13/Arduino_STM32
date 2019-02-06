@@ -1,5 +1,5 @@
 // DNS look-up functions based on the udp client
-// Author: Guido Socher
+//  Author: Guido Socher
 // Copyright: GPL V2
 //
 // 2010-05-20 <jc@wippler.nl>
@@ -12,11 +12,14 @@
 static byte dnstid_l; // a counter for transaction ID
 #define DNSCLIENT_SRC_PORT_H 0xE0
 
+#define DNS_TYPE_A 1
+#define DNS_CLASS_IN 1
+
 static void dnsRequest (const char *hostname, bool fromRam) {
     ++dnstid_l; // increment for next request, finally wrap
     if (ether.dnsip[0] == 0)
-        memset(ether.dnsip, 8, 4); // use 8.8.8.8 Google DNS as default
-    ether.udpPrepare((DNSCLIENT_SRC_PORT_H << 8) | dnstid_l, ether.dnsip, 53);
+        memset(ether.dnsip, 8, IP_LEN); // use 8.8.8.8 Google DNS as default
+    ether.udpPrepare((DNSCLIENT_SRC_PORT_H << 8) | dnstid_l, ether.dnsip, DNS_PORT);
     memset(gPB + UDP_DATA_P, 0, 12);
 
     byte *p = gPB + UDP_DATA_P + 12;
@@ -36,9 +39,9 @@ static void dnsRequest (const char *hostname, bool fromRam) {
 
     *p++ = 0; // terminate with zero, means root domain.
     *p++ = 0;
-    *p++ = 1; // type A
+    *p++ = DNS_TYPE_A;
     *p++ = 0;
-    *p++ = 1; // class IN
+    *p++ = DNS_CLASS_IN;
     byte i = p - gPB - UDP_DATA_P;
     gPB[UDP_DATA_P] = i;
     gPB[UDP_DATA_P+1] = dnstid_l;
@@ -54,13 +57,13 @@ static void dnsRequest (const char *hostname, bool fromRam) {
 */
 static bool checkForDnsAnswer (uint16_t plen) {
     byte *p = gPB + UDP_DATA_P; //start of UDP payload
-    if (plen < 70 || gPB[UDP_SRC_PORT_L_P] != 53 || //from DNS source port
+    if (plen < 70 || gPB[UDP_SRC_PORT_L_P] != DNS_PORT || //from DNS source port
             gPB[UDP_DST_PORT_H_P] != DNSCLIENT_SRC_PORT_H || //response to same port as we sent from (MSB)
             gPB[UDP_DST_PORT_L_P] != dnstid_l || //response to same port as we sent from (LSB)
             p[1] != dnstid_l) //message id same as we sent
         return false; //not our DNS response
     if((p[3] & 0x0F) != 0)
-        return true; //DNS response recieved with error
+        return true; //DNS response received with error
 
     p += *p; // we encoded the query len into tid
     for (;;) {
@@ -75,7 +78,7 @@ static bool checkForDnsAnswer (uint16_t plen) {
             }
         if (p + 14 > gPB + plen)
             break;
-        if (p[1] == 1 && p[9] == 4) { // type "A" and IPv4
+        if (p[1] == DNS_TYPE_A && p[9] == 4) { // type "A" and IPv4
             ether.copyIp(ether.hisip, p + 10);
             break;
         }
@@ -90,24 +93,24 @@ bool EtherCard::dnsLookup (const char* name, bool fromRam) {
 
     while(!isLinkUp())
     {
-        if ((uint16_t) (millis() - start) >= 30000)
+        if (uint16_t(millis()) - start >= 30000)
             return false; //timeout waiting for link
     }
-    while(clientWaitingGw())
+    while(clientWaitingDns())
     {
         packetLoop(packetReceive());
-        if ((uint16_t) (millis() - start) >= 30000)
+        if (uint16_t(millis()) - start >= 30000)
             return false; //timeout waiting for gateway ARP
     }
 
-    memset(hisip, 0, 4);
+    memset(hisip, 0, IP_LEN);
     dnsRequest(name, fromRam);
 
     start = millis();
     while (hisip[0] == 0) {
-        if ((uint16_t) (millis() - start) >= 30000)
+        if (uint16_t(millis()) - start >= 30000)
             return false; //timout waiting for dns response
-        uint16_t len = packetReceive();
+        word len = packetReceive();
         if (len > 0 && packetLoop(len) == 0) //packet not handled by tcp/ip packet loop
             if(checkForDnsAnswer(len))
                 return false; //DNS response recieved with error
