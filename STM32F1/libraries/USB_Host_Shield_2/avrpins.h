@@ -1241,10 +1241,10 @@ MAKE_PIN(P7, 7);
 MAKE_PIN(P8, 8);
 MAKE_PIN(P9, 9); //PWM
 
-MAKE_PIN(P10, 10); //SPI SS
-MAKE_PIN(P11, 11); //SPI MOSI
-MAKE_PIN(P12, 12); //SPI MISO
-MAKE_PIN(P13, 13); //SPI SCK / BUILTIN LED
+MAKE_PIN(P10, PA4); //SPI SS
+MAKE_PIN(P11, PA7); //SPI MOSI
+MAKE_PIN(P12, PA6); //SPI MISO
+MAKE_PIN(P13, PA5); //SPI SCK / BUILTIN LED
 
 MAKE_PIN(P14, 14); // A0
 MAKE_PIN(P15, 15); // A1
@@ -1253,6 +1253,15 @@ MAKE_PIN(P17, 17); // A3
 MAKE_PIN(P18, 18); // A4 SDA
 MAKE_PIN(P19, 19); // A5 SCL
 MAKE_PIN(P20, 20); // ATN
+/*
+ <---- Pinout ---->
+ W5x00 <--> STM32F103
+ SS    <-->  PA4 <-->  BOARD_SPI1_NSS_PIN
+ SCK   <-->  PA5 <-->  BOARD_SPI1_SCK_PIN
+ MISO  <-->  PA6 <-->  BOARD_SPI1_MISO_PIN
+ MOSI  <-->  PA7 <-->  BOARD_SPI1_MOSI_PIN
+ =========================================================
+*/
 
 #define STM32_SPI_CS PA4
 

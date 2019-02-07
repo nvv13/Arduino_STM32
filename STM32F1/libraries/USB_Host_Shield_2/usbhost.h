@@ -52,10 +52,24 @@ public:
                 SPI_SS::SetDirWrite();
                 SPI_SS::Set();
         }
-#elif defined(STM32F4) || defined(__STM32F1__) 
+#elif defined(STM32F4) 
 #warning "You need to initialize the SPI interface manually when using the STM32F4 platform"
         static void init() {
                 // Should be initialized by the user manually for now
+        }
+#elif defined(__STM32F1__) 
+        static void init() {
+                // Should be initialized by the user manually for now
+     pinMode(STM32_SPI_CS, OUTPUT);
+	    SPI.begin();
+	    SPI.setBitOrder(MSBFIRST);
+	    //SPI.setDataMode(SPI_MODE0);
+	    //SPI.setClockDivider(SPI_CLOCK_DIV16);
+
+            SPI.setDataMode(SPI_MODE0);
+            SPI.setClockDivider(SPI_CLOCK_DIV4);
+     pinMode(STM32_SPI_CS, OUTPUT);
+
         }
 #elif !defined(SPDR)
         static void init() {
