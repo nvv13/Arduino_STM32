@@ -60,7 +60,7 @@ public:
 #elif defined(__STM32F1__) 
         static void init() {
                 // Should be initialized by the user manually for now
-     pinMode(STM32_SPI_CS, OUTPUT);
+     //pinMode(STM32_SPI_CS, OUTPUT);
 	    SPI.begin();
 	    SPI.setBitOrder(MSBFIRST);
 	    //SPI.setDataMode(SPI_MODE0);
@@ -68,7 +68,7 @@ public:
 
             SPI.setDataMode(SPI_MODE0);
             SPI.setClockDivider(SPI_CLOCK_DIV4);
-     pinMode(STM32_SPI_CS, OUTPUT);
+     //pinMode(STM32_SPI_CS, OUTPUT);
 
         }
 #elif !defined(SPDR)
@@ -213,12 +213,19 @@ void MAX3421e< SPI_SS, INTR >::regWr(uint8_t reg, uint8_t data) {
         c[1] = data;
         HAL_SPI_Transmit(&SPI_Handle, c, 2, HAL_MAX_DELAY);
 #elif defined(__STM32F1__)
-  digitalWrite(STM32_SPI_CS, LOW);
-  SPI.transfer(0xF0);
-  SPI.transfer(reg >> 8);
-  SPI.transfer(reg & 0xFF);
-  SPI.transfer(data);
-  digitalWrite(STM32_SPI_CS, HIGH);
+
+        SPI.transfer(reg | 0x02);
+        SPI.transfer(data);
+
+	//SPI.transfer(op | (address & ADDR_MASK));
+	//SPI.transfer(data);
+
+//  digitalWrite(STM32_SPI_CS, LOW);
+//  SPI.transfer(0xF0);
+//  SPI.transfer(reg >> 8);
+//  SPI.transfer(reg & 0xFF);
+//  SPI.transfer(data);
+//  digitalWrite(STM32_SPI_CS, HIGH);
 #elif !defined(SPDR) // ESP8266, ESP32
         USB_SPI.transfer(reg | 0x02);
         USB_SPI.transfer(data);
@@ -265,6 +272,11 @@ uint8_t* MAX3421e< SPI_SS, INTR >::bytesWr(uint8_t reg, uint8_t nbytes, uint8_t*
         HAL_SPI_Transmit(&SPI_Handle, data_p, nbytes, HAL_MAX_DELAY);
         data_p += nbytes;
 #elif defined(__STM32F1__)
+        SPI.transfer(reg | 0x02);
+	while (nbytes--)
+		SPI.transfer(*data_p++);
+
+/*
   for (uint16_t i=0; i<nbytes; i++)
   {
   digitalWrite(STM32_SPI_CS, LOW);
@@ -274,7 +286,8 @@ uint8_t* MAX3421e< SPI_SS, INTR >::bytesWr(uint8_t reg, uint8_t nbytes, uint8_t*
      reg++; 
     SPI.transfer( data_p[i]);
   digitalWrite(STM32_SPI_CS, HIGH);
-  }
+  }*/
+
 #elif !defined(SPDR) // ESP8266, ESP32
         yield();
         USB_SPI.transfer(reg | 0x02);
@@ -332,12 +345,20 @@ uint8_t MAX3421e< SPI_SS, INTR >::regRd(uint8_t reg) {
         HAL_SPI_Receive(&SPI_Handle, &rv, 1, HAL_MAX_DELAY);
         SPI_SS::Set();
 #elif defined(__STM32F1__)
+
+	SPI.transfer(reg);
+	uint8_t rv = SPI.transfer(0x00);
+//	if (address & 0x80)
+//		result = SPI.transfer(0x00);
+
+/*
   digitalWrite(STM32_SPI_CS, LOW);
   SPI.transfer(0x0F);
   SPI.transfer( reg >> 8);
   SPI.transfer( reg & 0xFF);
   uint8_t rv = SPI.transfer(0);
-  digitalWrite(STM32_SPI_CS, HIGH);
+  digitalWrite(STM32_SPI_CS, HIGH);*/
+
 #elif !defined(SPDR) || defined(SPI_HAS_TRANSACTION)
         USB_SPI.transfer(reg);
         uint8_t rv = USB_SPI.transfer(0); // Send empty byte
@@ -387,6 +408,12 @@ uint8_t* MAX3421e< SPI_SS, INTR >::bytesRd(uint8_t reg, uint8_t nbytes, uint8_t*
         HAL_SPI_Receive(&SPI_Handle, data_p, nbytes, HAL_MAX_DELAY);
         data_p += nbytes;
 #elif defined(__STM32F1__)
+	SPI.transfer(reg);
+    while (nbytes--) {
+		*data_p++ = SPI.transfer(0x00);
+    }
+
+/*
   for (uint16_t i=0; i<nbytes; i++)
   {
   digitalWrite(STM32_SPI_CS, LOW);
@@ -396,7 +423,7 @@ uint8_t* MAX3421e< SPI_SS, INTR >::bytesRd(uint8_t reg, uint8_t nbytes, uint8_t*
   reg++;  
   data_p[i] = SPI.transfer(0);
   digitalWrite(STM32_SPI_CS, HIGH);
-  }
+  }*/
 #elif !defined(SPDR) // ESP8266, ESP32
         yield();
         USB_SPI.transfer(reg);
